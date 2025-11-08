@@ -1714,6 +1714,7 @@ void OBSBasicSettings::LoadSimpleOutputSettings()
 	bool replayBuf = config_get_bool(main->Config(), "SimpleOutput", "RecRB");
 	int rbTime = config_get_int(main->Config(), "SimpleOutput", "RecRBTime");
 	int rbSize = config_get_int(main->Config(), "SimpleOutput", "RecRBSize");
+	bool rbFlush = config_get_bool(main->Config(), "SimpleOutput", "FlushRBAfterSave");
 	int tracks = config_get_int(main->Config(), "SimpleOutput", "RecTracks");
 
 	ui->simpleOutRecTrack1->setChecked(tracks & (1 << 0));
@@ -1779,6 +1780,7 @@ void OBSBasicSettings::LoadSimpleOutputSettings()
 	ui->simpleReplayBuf->setChecked(replayBuf);
 	ui->simpleRBSecMax->setValue(rbTime);
 	ui->simpleRBMegsMax->setValue(rbSize);
+	ui->simpleRBFlush->setChecked(rbFlush);
 
 	SimpleStreamingEncoderChanged();
 }
@@ -2538,6 +2540,7 @@ void OBSBasicSettings::LoadAdvancedSettings()
 	bool replayBuf = config_get_bool(main->Config(), "AdvOut", "RecRB");
 	int rbTime = config_get_int(main->Config(), "AdvOut", "RecRBTime");
 	int rbSize = config_get_int(main->Config(), "AdvOut", "RecRBSize");
+	bool rbFlush = config_get_bool(main->Config(), "AdvOut", "FlushRBAfterSave");
 	bool autoRemux = config_get_bool(main->Config(), "Video", "AutoRemux");
 	const char *hotkeyFocusType = config_get_string(App()->GetUserConfig(), "General", "HotkeyFocusType");
 	bool dynBitrate = config_get_bool(main->Config(), "Output", "DynamicBitrate");
@@ -2561,6 +2564,7 @@ void OBSBasicSettings::LoadAdvancedSettings()
 	ui->advReplayBuf->setChecked(replayBuf);
 	ui->advRBSecMax->setValue(rbTime);
 	ui->advRBMegsMax->setValue(rbSize);
+	ui->advRBFlush->setChecked(rbFlush);
 
 	ui->reconnectEnable->setChecked(reconnect);
 	ui->reconnectRetryDelay->setValue(retryDelay);
@@ -3383,6 +3387,7 @@ void OBSBasicSettings::SaveOutputSettings()
 	SaveGroupBox(ui->simpleReplayBuf, "SimpleOutput", "RecRB");
 	SaveSpinBox(ui->simpleRBSecMax, "SimpleOutput", "RecRBTime");
 	SaveSpinBox(ui->simpleRBMegsMax, "SimpleOutput", "RecRBSize");
+	SaveCheckBox(ui->simpleRBFlush, "SimpleOutput", "FlushRBAfterSave");
 	config_set_int(main->Config(), "SimpleOutput", "RecTracks", SimpleOutGetSelectedAudioTracks());
 
 	curAdvStreamEncoder = GetComboData(ui->advOutEncoder);
@@ -3463,6 +3468,7 @@ void OBSBasicSettings::SaveOutputSettings()
 	SaveCheckBox(ui->advReplayBuf, "AdvOut", "RecRB");
 	SaveSpinBox(ui->advRBSecMax, "AdvOut", "RecRBTime");
 	SaveSpinBox(ui->advRBMegsMax, "AdvOut", "RecRBSize");
+	SaveCheckBox(ui->advRBFlush, "AdvOut", "FlushRBAfterSave");
 
 	WriteJsonData(streamEncoderProps, "streamEncoder.json");
 	WriteJsonData(recordEncoderProps, "recordEncoder.json");
