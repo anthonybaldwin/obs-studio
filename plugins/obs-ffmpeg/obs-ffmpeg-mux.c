@@ -1057,9 +1057,11 @@ static inline void purge(struct ffmpeg_muxer *stream)
 static inline void replay_buffer_purge(struct ffmpeg_muxer *stream, struct encoder_packet *pkt)
 {
 	if (flushing(stream)) {
-		while (stream->keyframes >= 2)
-			purge(stream);
-		os_atomic_set_bool(&stream->flushing, false);
+		if (stream->keyframes >= 3) {
+			while (stream->keyframes > 1)
+				purge(stream);
+			os_atomic_set_bool(&stream->flushing, false);
+		}
 		return;
 	}
 
