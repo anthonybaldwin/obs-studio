@@ -835,7 +835,6 @@ bool AdvancedOutput::StartReplayBuffer()
 	const char *rbSuffix;
 	int rbTime;
 	int rbSize;
-	bool rbFlush;
 
 	if (!useStreamEncoder) {
 		if (!ffmpegOutput)
@@ -860,7 +859,6 @@ bool AdvancedOutput::StartReplayBuffer()
 		rbSuffix = config_get_string(main->Config(), "SimpleOutput", "RecRBSuffix");
 		rbTime = config_get_int(main->Config(), "AdvOut", "RecRBTime");
 		rbSize = config_get_int(main->Config(), "AdvOut", "RecRBSize");
-		rbFlush = config_get_bool(main->Config(), "AdvOut", "FlushRBAfterSave");
 
 		string f = GetFormatString(filenameFormat, rbPrefix, rbSuffix);
 		string ext = GetFormatExt(recFormat);
@@ -873,7 +871,6 @@ bool AdvancedOutput::StartReplayBuffer()
 		obs_data_set_bool(settings, "allow_spaces", !noSpace);
 		obs_data_set_int(settings, "max_time_sec", rbTime);
 		obs_data_set_int(settings, "max_size_mb", usesBitrate ? 0 : rbSize);
-		obs_data_set_bool(settings, "save_flush", rbFlush);
 
 		obs_output_update(replayBuffer, settings);
 	}

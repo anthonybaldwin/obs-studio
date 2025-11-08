@@ -35,6 +35,7 @@ struct ffmpeg_muxer {
 	int64_t save_ts;
 	int keyframes;
 	obs_hotkey_id hotkey;
+	obs_hotkey_id hotkey_flush;
 	volatile bool muxing;
 	volatile bool flushing;
 	bool save_flush;

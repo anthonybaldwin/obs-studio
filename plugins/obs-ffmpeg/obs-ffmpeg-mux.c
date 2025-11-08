@@ -945,6 +945,34 @@ static void replay_buffer_hotkey(void *data, obs_hotkey_id id, obs_hotkey_t *hot
 	}
 }
 
+static void replay_buffer_hotkey_flush(void *data, obs_hotkey_id id, obs_hotkey_t *hotkey, bool pressed)
+{
+	UNUSED_PARAMETER(id);
+	UNUSED_PARAMETER(hotkey);
+
+	if (!pressed)
+		return;
+
+	struct ffmpeg_muxer *stream = data;
+
+	if (os_atomic_load_bool(&stream->active)) {
+		obs_encoder_t *vencoder = obs_output_get_video_encoder(stream->output);
+
+		if (flushing(stream)) {
+			info("Could not save buffer while flushing");
+			return;
+		}
+
+		if (obs_encoder_paused(vencoder)) {
+			info("Could not save buffer because encoders paused");
+			return;
+		}
+
+		stream->save_ts = os_gettime_ns() / 1000LL;
+		stream->save_flush = true;
+	}
+}
+
 static void save_replay_proc(void *data, calldata_t *cd)
 {
 	replay_buffer_hotkey(data, 0, NULL, true);
@@ -966,6 +994,9 @@ static void *replay_buffer_create(obs_data_t *settings, obs_output_t *output)
 
 	stream->hotkey = obs_hotkey_register_output(output, "ReplayBuffer.Save", obs_module_text("ReplayBuffer.Save"),
 						    replay_buffer_hotkey, stream);
+	stream->hotkey_flush = obs_hotkey_register_output(output, "ReplayBuffer.SaveFlush",
+							   obs_module_text("ReplayBuffer.SaveFlush"),
+							   replay_buffer_hotkey_flush, stream);
 
 	proc_handler_t *ph = obs_output_get_proc_handler(output);
 	proc_handler_add(ph, "void save()", save_replay_proc, stream);
@@ -997,7 +1028,6 @@ static bool replay_buffer_start(void *data)
 	obs_data_t *s = obs_output_get_settings(stream->output);
 	stream->max_time = obs_data_get_int(s, "max_time_sec") * 1000000LL;
 	stream->max_size = obs_data_get_int(s, "max_size_mb") * (1024 * 1024);
-	stream->save_flush = obs_data_get_bool(s, "save_flush");
 	obs_data_release(s);
 
 	os_atomic_set_bool(&stream->active, true);
@@ -1136,8 +1166,10 @@ static void *replay_buffer_mux_thread(void *data)
 		obs_encoder_packet_release(pkt);
 	}
 
-	if (stream->save_flush)
+	if (stream->save_flush) {
 		os_atomic_set_bool(&stream->flushing, true);
+		stream->save_flush = false;
+	}
 
 	info("Wrote replay buffer to '%s'", stream->path.array);
 
