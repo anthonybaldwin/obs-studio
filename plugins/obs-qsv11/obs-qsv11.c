@@ -1289,6 +1289,16 @@ static bool obs_qsv_encode_tex(void *data, struct encoder_texture *tex, int64_t 
 	return true;
 }
 
+static void obs_qsv_request_keyframe(void *data)
+{
+	struct obs_qsv *obsqsv = data;
+
+	pthread_mutex_lock(&g_QsvLock);
+	if (obsqsv->context)
+		qsv_encoder_request_keyframe(obsqsv->context);
+	pthread_mutex_unlock(&g_QsvLock);
+}
+
 struct obs_encoder_info obs_qsv_encoder_tex = {
 	.id = "obs_qsv11",
 	.type = OBS_ENCODER_VIDEO,
@@ -1304,6 +1314,7 @@ struct obs_encoder_info obs_qsv_encoder_tex = {
 	.get_extra_data = obs_qsv_extra_data,
 	.get_sei_data = obs_qsv_sei,
 	.get_video_info = obs_qsv_video_info,
+	.request_keyframe = obs_qsv_request_keyframe,
 };
 
 struct obs_encoder_info obs_qsv_encoder = {
@@ -1320,6 +1331,7 @@ struct obs_encoder_info obs_qsv_encoder = {
 	.get_extra_data = obs_qsv_extra_data,
 	.get_sei_data = obs_qsv_sei,
 	.get_video_info = obs_qsv_video_info,
+	.request_keyframe = obs_qsv_request_keyframe,
 	.caps = OBS_ENCODER_CAP_DYN_BITRATE | OBS_ENCODER_CAP_INTERNAL | OBS_ENCODER_CAP_DEPRECATED,
 };
 
@@ -1338,6 +1350,7 @@ struct obs_encoder_info obs_qsv_encoder_tex_v2 = {
 	.get_extra_data = obs_qsv_extra_data,
 	.get_sei_data = obs_qsv_sei,
 	.get_video_info = obs_qsv_video_info,
+	.request_keyframe = obs_qsv_request_keyframe,
 };
 
 struct obs_encoder_info obs_qsv_encoder_v2 = {
@@ -1354,6 +1367,7 @@ struct obs_encoder_info obs_qsv_encoder_v2 = {
 	.get_extra_data = obs_qsv_extra_data,
 	.get_sei_data = obs_qsv_sei,
 	.get_video_info = obs_qsv_video_info,
+	.request_keyframe = obs_qsv_request_keyframe,
 	.caps = OBS_ENCODER_CAP_DYN_BITRATE | OBS_ENCODER_CAP_INTERNAL | OBS_ENCODER_CAP_ROI,
 };
 
@@ -1371,6 +1385,7 @@ struct obs_encoder_info obs_qsv_av1_encoder_tex = {
 	.get_defaults = obs_qsv_defaults_av1,
 	.get_extra_data = obs_qsv_extra_data,
 	.get_video_info = obs_qsv_video_plus_hdr_info,
+	.request_keyframe = obs_qsv_request_keyframe,
 };
 
 struct obs_encoder_info obs_qsv_av1_encoder = {
@@ -1386,6 +1401,7 @@ struct obs_encoder_info obs_qsv_av1_encoder = {
 	.get_defaults = obs_qsv_defaults_av1,
 	.get_extra_data = obs_qsv_extra_data,
 	.get_video_info = obs_qsv_video_plus_hdr_info,
+	.request_keyframe = obs_qsv_request_keyframe,
 	.caps = OBS_ENCODER_CAP_DYN_BITRATE | OBS_ENCODER_CAP_INTERNAL | OBS_ENCODER_CAP_ROI,
 };
 
@@ -1403,6 +1419,7 @@ struct obs_encoder_info obs_qsv_hevc_encoder_tex = {
 	.get_defaults = obs_qsv_defaults_hevc,
 	.get_extra_data = obs_qsv_extra_data,
 	.get_video_info = obs_qsv_video_plus_hdr_info,
+	.request_keyframe = obs_qsv_request_keyframe,
 };
 
 struct obs_encoder_info obs_qsv_hevc_encoder = {
@@ -1418,5 +1435,6 @@ struct obs_encoder_info obs_qsv_hevc_encoder = {
 	.get_defaults = obs_qsv_defaults_hevc,
 	.get_extra_data = obs_qsv_extra_data,
 	.get_video_info = obs_qsv_video_plus_hdr_info,
+	.request_keyframe = obs_qsv_request_keyframe,
 	.caps = OBS_ENCODER_CAP_DYN_BITRATE | OBS_ENCODER_CAP_INTERNAL | OBS_ENCODER_CAP_ROI,
 };

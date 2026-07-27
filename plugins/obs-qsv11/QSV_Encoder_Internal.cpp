@@ -781,6 +781,10 @@ mfxStatus QSV_Encoder_Internal::Encode(uint64_t ts, uint8_t *pDataY, uint8_t *pD
 		MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 	}
 
+	m_ctrl.FrameType = m_bRequestKeyframe.exchange(false)
+				   ? (MFX_FRAMETYPE_IDR | MFX_FRAMETYPE_I | MFX_FRAMETYPE_REF)
+				   : MFX_FRAMETYPE_UNKNOWN;
+
 	for (;;) {
 		// Encode a frame asynchronously (returns immediately)
 		sts = m_pmfxENC->EncodeFrameAsync(&m_ctrl, pSurface, &m_pTaskPool[nTaskIdx].mfxBS,
@@ -841,6 +845,10 @@ mfxStatus QSV_Encoder_Internal::Encode_tex(uint64_t ts, void *tex, uint64_t lock
 		MSDK_CHECK_RESULT(sts, MFX_ERR_NONE, sts);
 	}
 
+	m_ctrl.FrameType = m_bRequestKeyframe.exchange(false)
+				   ? (MFX_FRAMETYPE_IDR | MFX_FRAMETYPE_I | MFX_FRAMETYPE_REF)
+				   : MFX_FRAMETYPE_UNKNOWN;
+
 	for (;;) {
 		// Encode a frame asynchronously (returns immediately)
 		sts = m_pmfxENC->EncodeFrameAsync(&m_ctrl, pSurface, &m_pTaskPool[nTaskIdx].mfxBS,
@@ -863,6 +871,11 @@ mfxStatus QSV_Encoder_Internal::Encode_tex(uint64_t ts, void *tex, uint64_t lock
 	}
 
 	return sts;
+}
+
+void QSV_Encoder_Internal::RequestKeyframe()
+{
+	m_bRequestKeyframe.store(true);
 }
 
 mfxStatus QSV_Encoder_Internal::Drain()
