@@ -1,6 +1,7 @@
 #include <obs-module.h>
 #include <util/darray.h>
 #include <util/platform.h>
+#include <util/threading.h>
 #include <obs-avc.h>
 
 #include <CoreFoundation/CoreFoundation.h>
@@ -71,6 +72,7 @@ struct vt_encoder {
 	VTCompressionSessionRef session;
 	CMSimpleQueueRef queue;
 	bool hw_enc;
+	volatile bool request_keyframe;
 	DARRAY(uint8_t) packet_data;
 	DARRAY(uint8_t) extra_data;
 };
@@ -1151,7 +1153,18 @@ static bool vt_encode(void *data, struct encoder_frame *frame, struct encoder_pa
 		goto fail;
 	}
 
-	code = VTCompressionSessionEncodeFrame(enc->session, pixbuf, pts, dur, NULL, pixbuf, NULL);
+	CFDictionaryRef frame_properties = NULL;
+	if (os_atomic_set_bool(&enc->request_keyframe, false)) {
+		const void *keys[1] = {kVTEncodeFrameOptionKey_ForceKeyFrame};
+		const void *values[1] = {kCFBooleanTrue};
+		frame_properties = CFDictionaryCreate(kCFAllocatorDefault, keys, values, 1,
+						      &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+	}
+
+	code = VTCompressionSessionEncodeFrame(enc->session, pixbuf, pts, dur, frame_properties, pixbuf, NULL);
+	if (frame_properties) {
+		CFRelease(frame_properties);
+	}
 	if (code != noErr) {
 		goto fail;
 	}
@@ -1175,6 +1188,12 @@ static bool vt_extra_data(void *data, uint8_t **extra_data, size_t *size)
 	*extra_data = enc->extra_data.array;
 	*size = enc->extra_data.num;
 	return true;
+}
+
+static void vt_request_keyframe(void *data)
+{
+	struct vt_encoder *enc = data;
+	os_atomic_set_bool(&enc->request_keyframe, true);
 }
 
 static const char *vt_getname(void *data)
@@ -1447,6 +1466,7 @@ void obs_module_post_load(void)
 		.get_defaults2 = vt_defaults,
 		.get_extra_data = vt_extra_data,
 		.free_type_data = vt_free_type_data,
+		.request_keyframe = vt_request_keyframe,
 		.caps = OBS_ENCODER_CAP_DYN_BITRATE | OBS_ENCODER_CAP_MULTITRACK_DYN_BITRATE,
 	};
 
