@@ -7,6 +7,7 @@
 #include <cstdlib>
 #include <memory>
 #include <sstream>
+#include <atomic>
 #include <vector>
 #include <mutex>
 #include <deque>
@@ -186,7 +187,7 @@ struct amf_base {
 	bool bframes_supported = false;
 	bool first_update = true;
 	bool roi_supported = false;
-	bool force_idr;
+	std::atomic<bool> force_idr = false;
 
 	inline amf_base(bool fallback) : fallback(fallback) {}
 	virtual ~amf_base() = default;
@@ -744,8 +745,7 @@ static void amf_encode_base(amf_base *enc, AMFSurface *amf_surf, encoder_packet 
 	/* -------------------------------------- */
 	/* Force an IDR or Key frame if signalled */
 
-	if (enc->force_idr) {
-		enc->force_idr = false;
+	if (enc->force_idr.exchange(false)) {
 		switch (enc->codec) {
 		case amf_codec_type::AVC:
 			amf_surf->SetProperty(AMF_VIDEO_ENCODER_FORCE_PICTURE_TYPE, AMF_VIDEO_ENCODER_PICTURE_TYPE_IDR);
