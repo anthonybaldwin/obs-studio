@@ -191,6 +191,12 @@ static bool openh264_encode(void *data, struct encoder_frame *frame, struct enco
 	return ffmpeg_video_encode(&enc->ffve, frame, packet, received_packet);
 }
 
+static void openh264_request_keyframe(void *data)
+{
+	struct openh264_encoder *enc = data;
+	ffmpeg_video_encoder_request_keyframe(&enc->ffve);
+}
+
 void openh264_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_int(settings, "bitrate", 6000);
@@ -247,4 +253,5 @@ struct obs_encoder_info openh264_encoder_info = {
 	.get_properties = openh264_properties,
 	.get_extra_data = openh264_extra_data,
 	.get_video_info = openh264_video_info,
+	.request_keyframe = openh264_request_keyframe,
 };

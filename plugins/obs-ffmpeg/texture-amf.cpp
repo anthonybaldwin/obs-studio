@@ -1008,6 +1008,12 @@ static bool amf_extra_data(void *data, uint8_t **header, size_t *size)
 	return true;
 }
 
+static void amf_request_keyframe(void *data)
+{
+	amf_base *enc = (amf_base *)data;
+	enc->force_idr = true;
+}
+
 static void h264_video_info_fallback(void *, struct video_scale_info *info)
 {
 	switch (info->format) {
@@ -1810,6 +1816,7 @@ static void register_avc()
 	amf_encoder_info.get_defaults = amf_avc_defaults;
 	amf_encoder_info.get_properties = amf_avc_properties;
 	amf_encoder_info.get_extra_data = amf_extra_data;
+	amf_encoder_info.request_keyframe = amf_request_keyframe;
 	amf_encoder_info.caps = OBS_ENCODER_CAP_PASS_TEXTURE | OBS_ENCODER_CAP_DYN_BITRATE |
 				OBS_ENCODER_CAP_MULTITRACK_DYN_BITRATE | OBS_ENCODER_CAP_ROI;
 
@@ -2221,6 +2228,7 @@ static void register_hevc()
 	amf_encoder_info.get_defaults = amf_hevc_defaults;
 	amf_encoder_info.get_properties = amf_hevc_properties;
 	amf_encoder_info.get_extra_data = amf_extra_data;
+	amf_encoder_info.request_keyframe = amf_request_keyframe;
 	amf_encoder_info.caps = OBS_ENCODER_CAP_PASS_TEXTURE | OBS_ENCODER_CAP_DYN_BITRATE |
 				OBS_ENCODER_CAP_MULTITRACK_DYN_BITRATE | OBS_ENCODER_CAP_ROI;
 
@@ -2636,6 +2644,7 @@ static void register_av1()
 	amf_encoder_info.get_defaults = amf_av1_defaults;
 	amf_encoder_info.get_properties = amf_av1_properties;
 	amf_encoder_info.get_extra_data = amf_extra_data;
+	amf_encoder_info.request_keyframe = amf_request_keyframe;
 	amf_encoder_info.caps = OBS_ENCODER_CAP_PASS_TEXTURE | OBS_ENCODER_CAP_DYN_BITRATE |
 				OBS_ENCODER_CAP_MULTITRACK_DYN_BITRATE | OBS_ENCODER_CAP_ROI;
 

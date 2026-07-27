@@ -227,6 +227,12 @@ static bool av1_encode(void *data, struct encoder_frame *frame, struct encoder_p
 	return ffmpeg_video_encode(&enc->ffve, frame, packet, received_packet);
 }
 
+static void av1_request_keyframe(void *data)
+{
+	struct av1_encoder *enc = data;
+	ffmpeg_video_encoder_request_keyframe(&enc->ffve);
+}
+
 void av1_defaults(obs_data_t *settings)
 {
 	obs_data_set_default_int(settings, "bitrate", 6000);
@@ -329,6 +335,7 @@ struct obs_encoder_info svt_av1_encoder_info = {
 	.get_properties = svt_av1_properties,
 	.get_extra_data = av1_extra_data,
 	.get_video_info = av1_video_info,
+	.request_keyframe = av1_request_keyframe,
 };
 
 struct obs_encoder_info aom_av1_encoder_info = {
@@ -343,4 +350,5 @@ struct obs_encoder_info aom_av1_encoder_info = {
 	.get_properties = aom_av1_properties,
 	.get_extra_data = av1_extra_data,
 	.get_video_info = av1_video_info,
+	.request_keyframe = av1_request_keyframe,
 };

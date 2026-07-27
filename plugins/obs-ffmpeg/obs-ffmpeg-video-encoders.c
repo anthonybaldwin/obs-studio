@@ -216,8 +216,12 @@ bool ffmpeg_video_encode(struct ffmpeg_video_encoder *enc, struct encoder_frame 
 
 	copy_data(enc->vframe, frame, enc->height, enc->context->pix_fmt);
 
+	if (os_atomic_set_bool(&enc->request_keyframe, false))
+		enc->vframe->pict_type = AV_PICTURE_TYPE_I;
+
 	enc->vframe->pts = frame->pts;
 	ret = avcodec_send_frame(enc->context, enc->vframe);
+	enc->vframe->pict_type = AV_PICTURE_TYPE_NONE;
 	if (ret == 0)
 		ret = avcodec_receive_packet(enc->context, &av_pkt);
 
@@ -276,4 +280,9 @@ bool ffmpeg_video_encode(struct ffmpeg_video_encoder *enc, struct encoder_frame 
 
 	av_packet_unref(&av_pkt);
 	return !timeout;
+}
+
+void ffmpeg_video_encoder_request_keyframe(struct ffmpeg_video_encoder *enc)
+{
+	os_atomic_set_bool(&enc->request_keyframe, true);
 }

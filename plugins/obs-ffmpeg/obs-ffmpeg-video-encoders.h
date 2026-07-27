@@ -4,6 +4,7 @@
 #include <util/darray.h>
 #include <util/dstr.h>
 #include <util/base.h>
+#include <util/threading.h>
 #include <media-io/video-io.h>
 #include <opts-parser.h>
 #include <obs-module.h>
@@ -32,6 +33,7 @@ struct ffmpeg_video_encoder {
 
 	int height;
 	bool initialized;
+	volatile bool request_keyframe;
 
 	void *parent;
 	init_error_cb on_init_error;
@@ -48,3 +50,4 @@ extern void ffmpeg_video_encoder_update(struct ffmpeg_video_encoder *enc, int bi
 					const char *ffmpeg_opts);
 extern bool ffmpeg_video_encode(struct ffmpeg_video_encoder *enc, struct encoder_frame *frame,
 				struct encoder_packet *packet, bool *received_packet);
+extern void ffmpeg_video_encoder_request_keyframe(struct ffmpeg_video_encoder *enc);
