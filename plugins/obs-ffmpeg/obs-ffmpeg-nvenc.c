@@ -401,6 +401,12 @@ static bool nvenc_encode(void *data, struct encoder_frame *frame, struct encoder
 	return true;
 }
 
+static void nvenc_request_keyframe(void *data)
+{
+	struct nvenc_encoder *enc = data;
+	ffmpeg_video_encoder_request_keyframe(&enc->ffve);
+}
+
 enum codec_type {
 	CODEC_H264,
 	CODEC_HEVC,
@@ -589,6 +595,7 @@ struct obs_encoder_info h264_nvenc_encoder_info = {
 	.get_sei_data = nvenc_sei_data,
 	.get_video_info = nvenc_video_info,
 	.caps = OBS_ENCODER_CAP_DYN_BITRATE,
+	.request_keyframe = nvenc_request_keyframe,
 };
 
 #ifdef ENABLE_HEVC
@@ -607,5 +614,6 @@ struct obs_encoder_info hevc_nvenc_encoder_info = {
 	.get_sei_data = nvenc_sei_data,
 	.get_video_info = nvenc_video_info,
 	.caps = OBS_ENCODER_CAP_DYN_BITRATE,
+	.request_keyframe = nvenc_request_keyframe,
 };
 #endif
