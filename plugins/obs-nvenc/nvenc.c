@@ -1024,6 +1024,12 @@ static void *av1_nvenc_soft_create(obs_data_t *settings, obs_encoder_t *encoder)
 
 static bool get_encoded_packet(struct nvenc_data *enc, bool finalize);
 
+static void nvenc_request_keyframe(void *data)
+{
+	struct nvenc_data *enc = data;
+	os_atomic_set_bool(&enc->request_keyframe, true);
+}
+
 static void nvenc_destroy(void *data)
 {
 	struct nvenc_data *enc = data;
@@ -1287,6 +1293,8 @@ bool nvenc_encode_base(struct nvenc_data *enc, struct nv_bitstream *bs, void *pi
 	NV_ENC_PIC_PARAMS params = {0};
 	params.version = NV_ENC_PIC_PARAMS_VER;
 	params.pictureStruct = NV_ENC_PIC_STRUCT_FRAME;
+	if (os_atomic_set_bool(&enc->request_keyframe, false))
+		params.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR;
 	params.inputBuffer = pic;
 	params.inputTimeStamp = (uint64_t)pts;
 	params.inputWidth = enc->cx;
@@ -1418,6 +1426,7 @@ struct obs_encoder_info h264_nvenc_info = {
 	.get_defaults = h264_nvenc_defaults,
 	.get_properties = h264_nvenc_properties,
 	.get_extra_data = nvenc_extra_data,
+	.request_keyframe = nvenc_request_keyframe,
 	.get_sei_data = nvenc_sei_data,
 };
 
@@ -1440,6 +1449,7 @@ struct obs_encoder_info hevc_nvenc_info = {
 	.get_defaults = hevc_nvenc_defaults,
 	.get_properties = hevc_nvenc_properties,
 	.get_extra_data = nvenc_extra_data,
+	.request_keyframe = nvenc_request_keyframe,
 	.get_sei_data = nvenc_sei_data,
 };
 #endif
@@ -1462,6 +1472,7 @@ struct obs_encoder_info av1_nvenc_info = {
 	.get_defaults = av1_nvenc_defaults,
 	.get_properties = av1_nvenc_properties,
 	.get_extra_data = nvenc_extra_data,
+	.request_keyframe = nvenc_request_keyframe,
 };
 
 struct obs_encoder_info h264_nvenc_soft_info = {
@@ -1478,6 +1489,7 @@ struct obs_encoder_info h264_nvenc_soft_info = {
 	.get_defaults = h264_nvenc_defaults,
 	.get_properties = h264_nvenc_properties,
 	.get_extra_data = nvenc_extra_data,
+	.request_keyframe = nvenc_request_keyframe,
 	.get_sei_data = nvenc_sei_data,
 	.get_video_info = nvenc_soft_video_info,
 };
@@ -1497,6 +1509,7 @@ struct obs_encoder_info hevc_nvenc_soft_info = {
 	.get_defaults = hevc_nvenc_defaults,
 	.get_properties = hevc_nvenc_properties,
 	.get_extra_data = nvenc_extra_data,
+	.request_keyframe = nvenc_request_keyframe,
 	.get_sei_data = nvenc_sei_data,
 	.get_video_info = nvenc_soft_video_info,
 };
@@ -1516,6 +1529,7 @@ struct obs_encoder_info av1_nvenc_soft_info = {
 	.get_defaults = av1_nvenc_defaults,
 	.get_properties = av1_nvenc_properties,
 	.get_extra_data = nvenc_extra_data,
+	.request_keyframe = nvenc_request_keyframe,
 	.get_video_info = nvenc_soft_video_info,
 };
 
