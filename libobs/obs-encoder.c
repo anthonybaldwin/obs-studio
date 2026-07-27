@@ -2284,3 +2284,18 @@ uint32_t obs_encoder_get_priming_samples(const obs_encoder_t *encoder)
 
 	return 0;
 }
+
+bool obs_encoder_request_keyframe(obs_encoder_t *encoder)
+{
+	if (!obs_encoder_valid(encoder, "obs_encoder_request_keyframe"))
+		return false;
+	if (encoder->info.type != OBS_ENCODER_VIDEO)
+		return false;
+
+	if (encoder->info.request_keyframe && encoder->context.data) {
+		encoder->info.request_keyframe(encoder->context.data);
+		return true;
+	}
+
+	return false;
+}

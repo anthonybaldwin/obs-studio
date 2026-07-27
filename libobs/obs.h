@@ -2388,6 +2388,9 @@ EXPORT size_t obs_encoder_get_mixer_index(const obs_encoder_t *encoder);
 /* For audio encoders, returns the number of samples to skip at the beginning of the stream */
 EXPORT uint32_t obs_encoder_get_priming_samples(const obs_encoder_t *encoder);
 
+/** For video encoders, requests a keyframe on the next frame. Returns false if unsupported */
+EXPORT bool obs_encoder_request_keyframe(obs_encoder_t *encoder);
+
 /**
  * Sets the preferred video format for a video encoder.  If the encoder can use
  * the format specified, it will force a conversion to that format if the
