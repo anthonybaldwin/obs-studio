@@ -21,6 +21,7 @@
 #include <util/dstr.h>
 #include <util/darray.h>
 #include <util/platform.h>
+#include <util/threading.h>
 #include <obs-module.h>
 #include <opts-parser.h>
 
@@ -48,6 +49,8 @@ struct obs_x264 {
 
 	x264_param_t params;
 	x264_t *context;
+
+	volatile bool request_keyframe;
 
 	DARRAY(uint8_t) packet_data;
 
@@ -786,8 +789,11 @@ static bool obs_x264_encode(void *data, struct encoder_frame *frame, struct enco
 	if (!frame || !packet || !received_packet)
 		return false;
 
-	if (frame)
+	if (frame) {
 		init_pic_data(obsx264, &pic, frame);
+		if (os_atomic_set_bool(&obsx264->request_keyframe, false))
+			pic.i_type = X264_TYPE_IDR;
+	}
 
 	if (obs_encoder_has_roi(obsx264->encoder))
 		add_roi(obsx264, &pic);
@@ -802,6 +808,12 @@ static bool obs_x264_encode(void *data, struct encoder_frame *frame, struct enco
 	parse_packet(obsx264, packet, nals, nal_count, &pic_out);
 
 	return true;
+}
+
+static void obs_x264_request_keyframe(void *data)
+{
+	struct obs_x264 *obsx264 = data;
+	os_atomic_set_bool(&obsx264->request_keyframe, true);
 }
 
 static bool obs_x264_extra_data(void *data, uint8_t **extra_data, size_t *size)
@@ -862,4 +874,5 @@ struct obs_encoder_info obs_x264_encoder = {
 	.get_sei_data = obs_x264_sei,
 	.get_video_info = obs_x264_video_info,
 	.caps = OBS_ENCODER_CAP_DYN_BITRATE | OBS_ENCODER_CAP_ROI,
+	.request_keyframe = obs_x264_request_keyframe,
 };
