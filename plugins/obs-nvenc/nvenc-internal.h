@@ -4,6 +4,7 @@
 #include "nvenc-helpers.h"
 
 #include <util/deque.h>
+#include <util/threading.h>
 #include <opts-parser.h>
 
 #ifdef _WIN32
@@ -76,6 +77,7 @@ struct nvenc_data {
 	bool first_packet;
 	bool can_change_bitrate;
 	bool non_texture;
+	volatile bool request_keyframe;
 
 	DARRAY(struct handle_tex) input_textures;
 	DARRAY(struct nv_bitstream) bitstreams;
