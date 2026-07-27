@@ -348,6 +348,15 @@ struct obs_encoder_info {
 
 	/** Audio encoder only: Returns padding, in samples, that must be skipped at the start of the stream. */
 	uint32_t (*get_priming_samples)(void *data);
+
+	/**
+	 * Video encoder only: Requests that the next encoded frame be a
+	 * keyframe (IDR). Optional. May be called from any thread; the
+	 * encoder should apply it to the next frame submitted for encoding.
+	 *
+	 * @param  data  Data associated with this encoder context
+	 */
+	void (*request_keyframe)(void *data);
 };
 
 EXPORT void obs_register_encoder_s(const struct obs_encoder_info *info, size_t size);

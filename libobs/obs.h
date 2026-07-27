@@ -2360,6 +2360,14 @@ EXPORT size_t obs_encoder_get_mixer_index(const obs_encoder_t *encoder);
 EXPORT uint32_t obs_encoder_get_priming_samples(const obs_encoder_t *encoder);
 
 /**
+ * For video encoders, requests that the next encoded frame be a keyframe
+ * (IDR).
+ *
+ * @return true if the encoder supports keyframe requests, false otherwise
+ */
+EXPORT bool obs_encoder_request_keyframe(obs_encoder_t *encoder);
+
+/**
  * Sets the preferred video format for a video encoder.  If the encoder can use
  * the format specified, it will force a conversion to that format if the
  * obs output format does not match the preferred format.
