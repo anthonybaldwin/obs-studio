@@ -60,6 +60,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "QSV_Encoder.h"
 #include "common_utils.h"
 
+#include <atomic>
 #include <vector>
 
 class QSV_Encoder_Internal {
@@ -80,6 +81,7 @@ public:
 	bool UpdateParams(qsv_param_t *pParams);
 	void AddROI(mfxU32 left, mfxU32 top, mfxU32 right, mfxU32 bottom, mfxI16 delta);
 	void ClearROI();
+	void RequestKeyframe();
 
 protected:
 	mfxStatus InitParams(qsv_param_t *pParams, enum qsv_codec codec);
@@ -136,4 +138,5 @@ private:
 	mfxEncodeCtrl m_ctrl;
 	mfxExtEncoderROI m_roi;
 	std::vector<mfxExtBuffer *> m_extbuf;
+	std::atomic<bool> m_bRequestKeyframe{false};
 };

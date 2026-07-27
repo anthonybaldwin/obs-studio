@@ -160,6 +160,12 @@ void qsv_encoder_clear_roi(qsv_t *pContext)
 	pEncoder->ClearROI();
 }
 
+void qsv_encoder_request_keyframe(qsv_t *pContext)
+{
+	QSV_Encoder_Internal *pEncoder = (QSV_Encoder_Internal *)pContext;
+	pEncoder->RequestKeyframe();
+}
+
 int qsv_encoder_encode(qsv_t *pContext, uint64_t ts, uint8_t *pDataY, uint8_t *pDataUV, uint32_t strideY,
 		       uint32_t strideUV, mfxBitstream **pBS)
 {
