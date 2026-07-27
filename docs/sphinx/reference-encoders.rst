@@ -174,6 +174,14 @@ Encoder Definition Structure (obs_encoder_info)
 
    :return: Number of samples
 
+.. member:: void (*request_keyframe)(void *data)
+
+   Requests that the next frame submitted for encoding be encoded as a
+   keyframe (IDR). Optional, video encoders only. May be called from any
+   thread.
+
+   .. versionadded:: 32.3
+
 Encoder Packet Structure (encoder_packet)
 -----------------------------------------
 
@@ -604,6 +612,18 @@ General Encoder Functions
    :return: Number of priming samples
 
    .. versionadded:: 32.1
+
+---------------------
+
+.. function:: bool obs_encoder_request_keyframe(obs_encoder_t *encoder)
+
+   For video encoders, requests that the next encoded frame be a
+   keyframe (IDR).
+
+   :return: *true* if the encoder supports keyframe requests, *false*
+            otherwise
+
+   .. versionadded:: 32.3
 
 ---------------------
 
