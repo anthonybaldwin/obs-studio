@@ -495,7 +495,8 @@ private:
 
 	obs_hotkey_pair_id streamingHotkeys, recordingHotkeys, pauseHotkeys, replayBufHotkeys, vcamHotkeys,
 		togglePreviewHotkeys, contextBarHotkeys;
-	obs_hotkey_id forceStreamingStopHotkey, splitFileHotkey, addChapterHotkey, saveReplayBufferHotkey;
+	obs_hotkey_id forceStreamingStopHotkey, splitFileHotkey, addChapterHotkey, saveReplayBufferHotkey,
+		saveFlushReplayBufferHotkey;
 
 	void InitHotkeys();
 	void CreateHotkeys();
@@ -1050,6 +1051,7 @@ public slots:
 
 	void ReplayBufferStart();
 	void ReplayBufferSave();
+	void ReplayBufferSaveFlush();
 	void ReplayBufferSaved();
 	void ReplayBufferStopping();
 	void ReplayBufferStop(int code);
