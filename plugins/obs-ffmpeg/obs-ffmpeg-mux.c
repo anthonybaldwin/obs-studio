@@ -58,6 +58,10 @@ static inline void replay_buffer_clear(struct ffmpeg_muxer *stream)
 	stream->max_size = 0;
 	stream->max_time = 0;
 	stream->save_ts = 0;
+	stream->flush_boundary = 0;
+	stream->last_flush_time = 0;
+	stream->save_flush = false;
+	os_atomic_set_bool(&stream->flushing, false);
 	stream->keyframes = 0;
 }
 
@@ -129,6 +133,11 @@ bool stopping(struct ffmpeg_muxer *stream)
 bool active(struct ffmpeg_muxer *stream)
 {
 	return os_atomic_load_bool(&stream->active);
+}
+
+bool flushing(struct ffmpeg_muxer *stream)
+{
+	return os_atomic_load_bool(&stream->flushing);
 }
 
 static void add_video_encoder_params(struct ffmpeg_muxer *stream, os_process_args_t *args, obs_encoder_t *vencoder)
@@ -922,12 +931,91 @@ static void save_replay_proc(void *data, calldata_t *cd)
 
 	if (os_atomic_load_bool(&stream->active)) {
 		obs_encoder_t *vencoder = obs_output_get_video_encoder(stream->output);
+
+		if (flushing(stream)) {
+			info("Could not save buffer while flushing");
+			return;
+		}
+
+		if (os_atomic_load_bool(&stream->muxing)) {
+			info("Could not save buffer - already muxing");
+			return;
+		}
+
 		if (obs_encoder_paused(vencoder)) {
 			info("Could not save buffer because the encoder is paused");
 			return;
 		}
 
+		if (stream->save_ts > 0) {
+			info("Save already pending");
+			return;
+		}
+
+		if (stream->save_flush) {
+			info("Flush save already pending");
+			return;
+		}
+
 		stream->save_ts = os_gettime_ns() / 1000LL;
+	}
+}
+
+/* Cooldown between flush saves to absorb accidental double presses */
+#define FLUSH_COOLDOWN_NS 250000000ULL
+
+static void save_flush_replay_proc(void *data, calldata_t *cd)
+{
+	UNUSED_PARAMETER(cd);
+	struct ffmpeg_muxer *stream = data;
+
+	if (os_atomic_load_bool(&stream->active)) {
+		obs_encoder_t *vencoder = obs_output_get_video_encoder(stream->output);
+
+		if (flushing(stream)) {
+			info("Could not flush - buffer already flushing");
+			return;
+		}
+
+		if (os_atomic_load_bool(&stream->muxing)) {
+			info("Could not flush - already muxing");
+			return;
+		}
+
+		if (obs_encoder_paused(vencoder)) {
+			info("Could not save buffer because the encoder is paused");
+			return;
+		}
+
+		if (stream->save_flush) {
+			info("Flush already pending");
+			return;
+		}
+
+		if (stream->save_ts > 0) {
+			info("Cannot flush - save already pending");
+			return;
+		}
+
+		if (stream->keyframes < 1) {
+			info("Cannot flush - no keyframe in buffer yet");
+			return;
+		}
+
+		int64_t now = (int64_t)os_gettime_ns();
+		if (stream->last_flush_time > 0 && (now - stream->last_flush_time) < (int64_t)FLUSH_COOLDOWN_NS) {
+			info("Cannot flush - cooldown active");
+			return;
+		}
+
+		/* The forced keyframe becomes the cut point; without encoder
+		 * support the cut happens at the next natural keyframe. */
+		if (!obs_encoder_request_keyframe(vencoder))
+			info("Encoder does not support keyframe requests; "
+			     "flush will cut at the next natural keyframe");
+
+		stream->last_flush_time = now;
+		stream->save_flush = true;
 	}
 }
 
@@ -946,6 +1034,7 @@ static void *replay_buffer_create(obs_data_t *settings, obs_output_t *output)
 
 	proc_handler_t *ph = obs_output_get_proc_handler(output);
 	proc_handler_add(ph, "void save()", save_replay_proc, stream);
+	proc_handler_add(ph, "void save_flush()", save_flush_replay_proc, stream);
 	proc_handler_add(ph, "void get_last_replay(out string path)", get_last_replay, stream);
 
 	signal_handler_t *sh = obs_output_get_signal_handler(output);
@@ -1028,6 +1117,39 @@ static inline void purge(struct ffmpeg_muxer *stream)
 	}
 }
 
+static inline void replay_buffer_trim_to_boundary(struct ffmpeg_muxer *stream)
+{
+	if (stream->flush_boundary == 0)
+		return;
+
+	/* The boundary keyframe starts the new buffer */
+	while (stream->packets.size > 0) {
+		struct encoder_packet front_pkt;
+		deque_peek_front(&stream->packets, &front_pkt, sizeof(front_pkt));
+
+		if (front_pkt.sys_dts_usec >= stream->flush_boundary)
+			break;
+
+		deque_pop_front(&stream->packets, &front_pkt, sizeof(front_pkt));
+
+		if (front_pkt.type == OBS_ENCODER_VIDEO && front_pkt.keyframe)
+			stream->keyframes--;
+
+		stream->cur_size -= front_pkt.size;
+		obs_encoder_packet_release(&front_pkt);
+	}
+
+	if (stream->packets.size > 0) {
+		struct encoder_packet first;
+		deque_peek_front(&stream->packets, &first, sizeof(first));
+		stream->cur_time = first.dts_usec;
+	} else {
+		stream->cur_time = 0;
+	}
+
+	stream->flush_boundary = 0;
+}
+
 static inline void replay_buffer_purge(struct ffmpeg_muxer *stream, struct encoder_packet *pkt)
 {
 	if (stream->max_size) {
@@ -1101,6 +1223,12 @@ static void *replay_buffer_mux_thread(void *data)
 		obs_encoder_packet_release(pkt);
 	}
 
+	if (stream->save_flush) {
+		/* Trigger the buffer trim on the next incoming packet */
+		os_atomic_set_bool(&stream->flushing, true);
+		stream->save_flush = false;
+	}
+
 	info("Wrote replay buffer to '%s'", stream->path.array);
 
 error:
@@ -1142,6 +1270,10 @@ static void replay_buffer_save(struct ffmpeg_muxer *stream)
 	for (size_t i = 0; i < num_packets; i++) {
 		struct encoder_packet *pkt;
 		pkt = deque_data(&stream->packets, i * size);
+
+		/* For flush saves, stop at the boundary keyframe */
+		if (stream->save_flush && stream->flush_boundary > 0 && pkt->sys_dts_usec >= stream->flush_boundary)
+			break;
 
 		if (pkt->type == OBS_ENCODER_VIDEO) {
 			if (!found_video) {
@@ -1213,6 +1345,13 @@ static void replay_buffer_data(void *data, struct encoder_packet *packet)
 	}
 
 	obs_encoder_packet_ref(&pkt, packet);
+
+	/* Handle flush trimming after save completes */
+	if (flushing(stream)) {
+		replay_buffer_trim_to_boundary(stream);
+		os_atomic_set_bool(&stream->flushing, false);
+	}
+
 	replay_buffer_purge(stream, &pkt);
 
 	if (!stream->packets.size)
@@ -1224,8 +1363,29 @@ static void replay_buffer_data(void *data, struct encoder_packet *packet)
 	if (packet->type == OBS_ENCODER_VIDEO && packet->keyframe)
 		stream->keyframes++;
 
+	/* A flush save cuts at the first keyframe after the press, which
+	 * was requested from the encoder at press time. The clip ends
+	 * right before this keyframe and the new buffer starts on it, so
+	 * consecutive flush saves are contiguous. */
+	if (stream->save_flush && packet->type == OBS_ENCODER_VIDEO && packet->keyframe) {
+		if (os_atomic_load_bool(&stream->muxing))
+			return;
+
+		if (stream->mux_thread_joinable) {
+			pthread_join(stream->mux_thread, NULL);
+			stream->mux_thread_joinable = false;
+		}
+
+		stream->flush_boundary = packet->sys_dts_usec;
+		stream->save_ts = 0;
+		replay_buffer_save(stream);
+		return;
+	}
+
 	if (stream->save_ts && packet->sys_dts_usec >= stream->save_ts) {
 		if (os_atomic_load_bool(&stream->muxing))
+			return;
+		if (flushing(stream))
 			return;
 
 		if (stream->mux_thread_joinable) {
