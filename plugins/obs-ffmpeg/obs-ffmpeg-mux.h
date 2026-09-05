@@ -33,9 +33,12 @@ struct ffmpeg_muxer {
 
 	/* replay buffer */
 	int64_t save_ts;
+	int64_t flush_boundary;
 	int keyframes;
 	obs_hotkey_id hotkey;
 	volatile bool muxing;
+	volatile bool flushing;
+	volatile bool save_flush;
 	mux_packets_t mux_packets;
 
 	/* split file */
@@ -66,6 +69,7 @@ struct ffmpeg_muxer {
 	bool allow_overwrite;
 };
 
+bool flushing(struct ffmpeg_muxer *stream);
 bool stopping(struct ffmpeg_muxer *stream);
 bool active(struct ffmpeg_muxer *stream);
 void start_pipe(struct ffmpeg_muxer *stream, const char *path);
