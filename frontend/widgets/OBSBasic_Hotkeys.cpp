@@ -234,6 +234,18 @@ void OBSBasic::CreateHotkeys()
 				  obs_data_get_json(newData));
 	}
 
+	auto replayBufferFlushCallback = [](void *data, obs_hotkey_id, obs_hotkey_t *, bool pressed) {
+		OBSBasic *basic = static_cast<OBSBasic *>(data);
+		if (basic->outputHandler->ReplayBufferActive() && pressed) {
+			blog(LOG_INFO, "Saving and flushing replay buffer due to hotkey");
+			basic->ReplayBufferSaveFlush();
+		}
+	};
+
+	saveFlushReplayBufferHotkey = obs_hotkey_register_frontend(
+		"OBSBasic.SaveFlushReplayBuffer", Str("Basic.Main.SaveReplayFlush"), replayBufferFlushCallback, this);
+	LoadHotkey(saveFlushReplayBufferHotkey, "OBSBasic.SaveFlushReplayBuffer");
+
 	if (vcamEnabled) {
 		vcamHotkeys = obs_hotkey_pair_register_frontend(
 			"OBSBasic.StartVirtualCam", Str("Basic.Main.StartVirtualCam"), "OBSBasic.StopVirtualCam",
@@ -323,6 +335,7 @@ void OBSBasic::ClearHotkeys()
 	obs_hotkey_unregister(addChapterHotkey);
 	obs_hotkey_pair_unregister(replayBufHotkeys);
 	obs_hotkey_unregister(saveReplayBufferHotkey);
+	obs_hotkey_unregister(saveFlushReplayBufferHotkey);
 	obs_hotkey_pair_unregister(vcamHotkeys);
 	obs_hotkey_pair_unregister(togglePreviewHotkeys);
 	obs_hotkey_pair_unregister(contextBarHotkeys);

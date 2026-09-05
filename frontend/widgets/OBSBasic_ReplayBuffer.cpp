@@ -168,6 +168,23 @@ void OBSBasic::ReplayBufferSave()
 	calldata_free(&cd);
 }
 
+void OBSBasic::ReplayBufferSaveFlush()
+{
+	if (!outputHandler || !outputHandler->replayBuffer) {
+		return;
+	}
+	if (!outputHandler->ReplayBufferActive()) {
+		return;
+	}
+
+	OnEvent(OBS_FRONTEND_EVENT_REPLAY_BUFFER_SAVING);
+
+	calldata_t cd = {0};
+	proc_handler_t *ph = obs_output_get_proc_handler(outputHandler->replayBuffer);
+	proc_handler_call(ph, "save_flush", &cd);
+	calldata_free(&cd);
+}
+
 void OBSBasic::ReplayBufferSaved()
 {
 	if (!outputHandler || !outputHandler->replayBuffer) {
